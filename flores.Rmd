@@ -1,0 +1,146 @@
+---
+title: "phyllotaxis"
+author: "FVB"
+date: "7 de agosto de 2019"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Patterns in nature
+
+ The scientist does not study nature because it is useful; he studies it because he delights in it, and he delights in it because it is beautiful (Henri Poincaré)
+
+```{r pressure, echo=FALSE}
+# This sets plot images to a nice size.
+options(repr.plot.width = 4, repr.plot.height = 4)
+
+# Loading in the ggplot2 package
+library(ggplot2)
+```
+
+## Warming up: drawing points on a circle
+
+There are many ways to represent data with ggplot2: from simple scatter plots to more complex ones, such as violin plots. The functions that start with geom_ define how the plot is shown. In this notebook, we will only work with geom_point which plots points in two dimensions. We just need a dataset with two variables, let's call them x and y.
+
+Let's start by drawing 50 points on a circle of radius 1. As every (x, y) point should be in the unit circle, it follows that x² + y² = 1. We can get this using the superfamous Pythagorean trigonometric identity which states that sin²(θ) + cos²(θ) = 1 for any real number θ.
+
+```{r}
+t <- seq(0, 2*pi, length.out = 50)
+x <- sin(t)
+y <- cos(t)
+df <- data.frame(t, x, y)
+
+# Make a scatter plot of points in a circle
+p <- ggplot(df, aes(x, y))
+p + geom_point()
+```
+
+## Make it harmonious with the Golden Angle
+
+Plants arrange their leaves in spirals. A spiral is a curve which starts from the origin and moves away from this point as it revolves around it. In the plot above all our points are at the same distance from the origin. A simple way to arrange them in a spiral is to multiply x and y by a factor which increases for each point. We could use t as that factor, as it meets these conditions, but we will do something more harmonious. We will use the Golden Angle:
+
+Golden Angle = π(3 − √5)
+
+This number is inspired by the Golden Ratio, one of the most famous numbers in the history of mathematics. Both the Golden Ratio and the Golden Angle appear in unexpected places in nature. Apart of flower petals and plant leaves, you'll find them in seed heads, pine cones, sunflower seeds, shells, spiral galaxies, hurricanes, etc.
+
+It's time to spiralize!
+
+
+```{r}
+# Defining the number of points
+points<-2000
+
+# Defining the Golden Angle
+angle<-pi*(3-sqrt(5))
+
+t <- (1:points) * angle
+x <- sin(t)
+y <-cos(t)
+df <- data.frame(t, x, y)
+
+# Make a scatter plot of points in a spiral
+p <- ggplot(df, aes(x*t, y*t))
+p +  geom_point()
+```
+
+## Remove everything unnecessary
+
+Apart from data, a plot includes many other components that define its final appearance. Our previous plot contains:
+
+    a background filled with grey color.
+    a grid of horizontal and vertical white lines in the background.
+    ticks along the axis.
+    a title on each axis.
+    text along axes to label marks.
+
+Art does not get along with most of these elements, so it's time to move to action.
+
+```{r}
+df <- data.frame(t, x, y)
+
+# Make a scatter plot of points in a spiral
+p <- ggplot(df, aes(x*t, y*t))
+p + geom_point() +
+theme_void()
+
+# mas cosas
+p + geom_point(col = "blue", size=2, alpha=.6)+
+theme_void()
+
+```
+
+
+## Play with aesthetics: the dandelion
+
+Until now, all points have the same appearance (size, color, shape, and alpha). Sometimes you will want to make the appearance of the points dependent on a variable in your dataset. Now we will make size variable. We will also change the shape of points. Although we won't be able to blow on it, the resulting image should remind you of a dandelion.
+
+```{r}
+p <- ggplot(df, aes(x*t, y*t,size=y*3))
+p + geom_point(col = "blue",  alpha=abs(x))+
+theme_void()
+
+#p <- ggplot(df, aes(x*t, y*t,size=t))
+#p + geom_point(col = "blue",shape=8,alpha=abs(x))+
+#theme(legend.position = "none")
+```
+
+
+## conclusiones
+```{r}
+angle <-3 * pi/180#
+#angle<-10*pi*(3-sqrt(5))/180
+points <- 1000
+color<-rep(c(1:12),1000)
+t <- (1:points)*angle
+x <- sin(t)
+y <- cos(t)
+
+df <- data.frame(t, x, y,color)
+
+p <- ggplot(df, aes(x*t, y*t,size=t,fill = factor(color)))
+p + geom_point(shape=23,alpha=0.6,show.legend = FALSE)+ theme_void()
+
+```
+
+```{r}
+
+angle<-13.4*pi*(3-sqrt(5))/180
+points <- 1000
+
+t <- (1:points)*angle
+x <- sin(t)
+y <- cos(t)
+
+df <- data.frame(t, x, y)
+
+p <- ggplot(df, aes(x*t, y*t,size=t))
+p + geom_point(shape=10,alpha=abs(x),show.legend = FALSE)+ theme_void()
+
+```
+
+

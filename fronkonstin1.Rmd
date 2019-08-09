@@ -1,0 +1,247 @@
+---
+title: "FRONCONSTINE"
+author: "FVB"
+date: "6 de agosto de 2019"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## un algo para pintar por clustering a partir de foto
+
+```{r}
+library(imager)
+library(tidyverse)
+library(purrr)
+
+# Location of the photograph
+#file="img/yo.jpg"
+#file="img/gritos.jpg"
+file="img/mari2.jpg"
+load.image(file) %>% 
+  grayscale()%>% 
+  threshold("9%") %>% plot() 
+
+# Load, convert to grayscale, filter image (to convert it to bw) and sample
+load.image(file) %>% 
+  grayscale() %>% 
+  threshold("9%") %>% 
+  as.cimg() %>% 
+  as.data.frame() -> franky
+
+
+#file="img/gritos.jpg"
+#load.image(file) %>% 
+#  grayscale()%>% 
+#  threshold("45%") %>% plot() 
+
+ 
+
+
+#plot(franky)
+
+# This function cuts the dendrogram in x groups and removes clusters formed by just one point
+clustResultx <- function(x) {
+  clustCut <- tibble(cluster_id = cutree(clusters, x)) %>% bind_cols(data)
+  clustCut %>% group_by(cluster_id) %>% 
+    summarize(size = n()) %>% 
+    filter(size > 1) %>% 
+    select(cluster_id) %>% 
+    inner_join(clustCut, by = "cluster_id") -> clustCut
+  return(clustCut)
+  }
+
+# This function adds the resulting segments of comparing two consecutive clustering results
+add_segments <- function(x){
+  
+  df1 <- clustEvol[[x]]
+  df0 <- clustEvol[[x-1]]
+  
+  new_points <- anti_join(df1, df0, by = "id")
+  
+  # If a new point is added to an existing cluster
+  new_points %>% 
+    inner_join(df1, by = "cluster_id", suffix = c(".1", ".2")) %>% 
+    filter(id.1 != id.2) %>% 
+    mutate(d = sqrt((x.1 - x.2)^2 + (y.1 - y.2)^2)) %>% 
+    group_by(id.1) %>% 
+    arrange(d) %>% 
+    slice(1) %>% 
+    select(p1 = id.1, p2 = id.2) %>% 
+    ungroup -> new_segments1
+  
+  # If a new 2-points cluster is generated
+  new_points %>% anti_join(bind_rows(select(new_segments1, id = p1), 
+                                     select(new_segments1, id = p2)), by = "id") %>% 
+    group_by(cluster_id) %>% 
+    ungroup -> unpaired_points
+  
+  unpaired_points %>% inner_join(unpaired_points, by = "cluster_id", suffix = c(".1", ".2")) %>% 
+    filter(id.1 < id.2) %>% 
+    select(p1 = id.1, p2 = id.2) -> new_segments2
+  
+  # If two existing clusters are joined
+  new_points <- anti_join(df1, df0, by = c("id", "cluster_id"))
+  
+  new_points %>% 
+    inner_join(df1, by = "cluster_id", suffix = c(".1", ".2")) %>% 
+    filter(id.1 != id.2) %>% 
+    anti_join(new_points, by = c("id.2" = "id")) %>% 
+    mutate(d = sqrt((x.1 - x.2)^2 + (y.1 - y.2)^2)) %>% 
+    arrange(d) %>% 
+    slice(1) %>% 
+    select(p1 = id.1, p2 = id.2) %>% 
+    ungroup -> new_segments3
+
+  bind_rows(new_segments1, new_segments2, new_segments3)
+}
+
+# Sample size
+n <- 4000
+
+# Random sample of points from protograph
+franky %>% 
+  sample_n(n, weight=(1-value)) %>% 
+  select(x,y) %>% mutate(id = row_number()) -> data
+
+# Matriz of distance between points
+dist_data <- dist(data %>% select(-id), method = "euclidean")
+
+# Hierarchical clustering
+clusters <- hclust(dist_data, method = 'single')
+
+# List with all possible clusters from maximum to minimum number of clusters
+nrow(data):1 %>% 
+  map(function(x) clustResultx(x)) -> clustEvol
+
+# Segments of clusters
+2:length(clustEvol) %>% 
+  map(function(x) add_segments(x)) %>% 
+  bind_rows() -> segments_id
+
+# Segments in (x, y) and (xend, yend) format
+segments_id %>% 
+  inner_join(data, by = c("p1" = "id"), suffix = c(".1", ".2")) %>% 
+  inner_join(data, by = c("p2" = "id"), suffix = c(".1", ".2")) %>% 
+  select(x = x.1, y = y.1, xend = x.2, yend = y.2) -> segments
+
+# Plot
+ggplot(segments) + 
+  geom_curve(aes(x = x, y = y, xend = xend, yend = yend),
+             ncp = 60) +
+  scale_x_continuous(expand=c(.1, .1)) +
+  scale_y_continuous(expand=c(.1, .1), trans = scales::reverse_trans()) +
+  coord_equal() +
+  theme_void()
+
+```
+
+
+## pruebas con imager
+
+
+
+```{r}
+library(imager)
+library(tidyverse)
+
+# Location of the photograph
+#file="img/gritos.jpg"
+file="img/mari2.jpg"
+# Load, convert to grayscale, filter image (to convert it to bw) and sample
+load.image(file) %>% 
+  grayscale() %>% 
+  threshold("35%") %>% 
+  as.cimg() %>% 
+  as.data.frame() -> franky
+
+load.image(file) %>% plot()
+
+#file="img/gritos.jpg"
+#file="img/mari1.jpg"
+load.image(file) %>% 
+  grayscale()%>% 
+  threshold("55%") -> img1
+
+load.image(file) %>% 
+  grayscale()%>% 
+  threshold("9%")-> img2
+
+plot(img1*1.3-img2)
+load.image(file) %>% 
+  grayscale()%>% plot() 
+```
+
+## atractores
+Imagenes basadas en achinchon post en fronkonstine.
+
+
+```{r}
+library(Rcpp)
+library(tidyverse)
+# opciones generales del grafico ggplot
+opt <-  theme(legend.position  = "none",
+            panel.background = element_rect(fill="white", color="black"),
+            plot.background  = element_rect(fill="white"),
+            axis.ticks       = element_blank(),
+            panel.grid       = element_blank(),
+            axis.title       = element_blank(),
+            axis.text        = element_blank())
+
+
+cppFunction('DataFrame createTrajectory(int n, double x0, double y0, 
+            double a1, double a2, double a3, double a4, double a5, 
+            double a6, double a7, double a8, double a9, double a10, 
+            double a11, double a12, double a13, double a14) {
+            // create the columns
+            NumericVector x(n);
+            NumericVector y(n);
+            x[0]=x0;
+            y[0]=y0;
+            for(int i = 1; i < n; ++i) {
+            x[i] = a1+a2*x[i-1]+ a3*y[i-1]+ a4*pow(fabs(x[i-1]), a5)+ a6*pow(fabs(y[i-1]), a7);
+            y[i] = a8+a9*x[i-1]+ a10*y[i-1]+ a11*pow(fabs(x[i-1]), a12)+ a13*pow(fabs(y[i-1]), a14);
+            }
+            // return a new data frame
+            return DataFrame::create(_["x"]= x, _["y"]= y);
+            }
+            ')
+a1 <- -0.8
+a2 <- 0.4
+a3 <- -1.1
+a4 <- 1.5
+a5 <- -1.6
+a6 <- -0.1
+a7 <- -0.5
+a8 <- 0.8
+a9 <- 1.0
+a10 <- -0.3
+a11 <- -0.6
+a12 <- -0.3
+a13 <- -1.2
+a14 <- -1.3
+
+df <- createTrajectory(10000000, 1, 1, a1, a2, a3, a4, a5, a6, 
+                       a7, a8, a9, a10, a11, a12, a13, a14)
+
+mx <- quantile(df$x, probs = 0.05)
+Mx <- quantile(df$x, probs = 0.95)
+my <- quantile(df$y, probs = 0.05)
+My <- quantile(df$y, probs = 0.95)
+
+df %>% filter(x > mx, x < Mx, y > my, y < My) -> df
+
+plot <- ggplot(df) +
+      geom_point(aes(x, y), shape=46, alpha=0.01, size=0, color="black") +
+      scale_x_continuous(expand = c(0,0))+
+      scale_y_continuous(expand = c(0,0))+
+      coord_fixed() + 
+      opt
+
+ggsave("strange2.png", plot, height = 4, width = 4, units = 'in', dpi = 1200)
+
+```
